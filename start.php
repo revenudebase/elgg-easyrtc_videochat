@@ -22,5 +22,8 @@ function elgg_easyrtc_videochat() {
 	elgg_register_js('handlebars', array(
 		'src' => '/mod/elgg-easyrtc_videochat/vendors/handlebars-v1.3.0'
 	));
+	elgg_register_js('fuse', array(
+		'src' => '/mod/elgg-easyrtc_videochat/vendors/Fuse/src/fuse.min'
+	));
 
 }
