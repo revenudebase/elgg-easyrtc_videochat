@@ -5,7 +5,7 @@ elgg.provide('elgg.nodeChat');
 
 elgg.nodeChat.init = function() {
 
-	require(['easyrtc', 'handlebars'], function() {
+	require(['socket.io-client', 'handlebars'], function() {
 
 		// toggle chat box
 		$('body').on('click', '.chat-box > .elgg-head, .chat-box > .elgg-head .elgg-menu-item-toggle a', function() {
@@ -16,55 +16,99 @@ elgg.nodeChat.init = function() {
 			$cb.toggleClass('elgg-state-active');
 		});
 
-		// close chat box
-		$('body').on('click', '.chat-box > .elgg-head .elgg-menu-item-close a', function() {
-			var $cb = $(this).closest('.chat-box');
+		// close chat room
+		$('body').on('click', '.chat-room > .elgg-head .elgg-menu-item-close a', function() {
+			var $cb = $(this).closest('.chat-room');
 
-			socket.emit('leave_room', $cb.data('channel'));
+			socket.emit('leave_room', $cb.data('room')); // @todo need callback that sure user leave room on server ?
 			$cb.remove();
 		});
 
 		// open room with an user
 		$('#online-users').on('click', '.elgg-body ul li', function() {
-			// check if room with this user is not already open
 			var $this = $(this),
+				myGUID = elgg.get_logged_in_user_guid(),
+				calledGUID = $this.data('guid'),
 				$cb = $('.chat-room'),
 				opened = 0;
 
-			$.each($cb, function(i, e) {
-				opened = $.grep($(e).data('data').add_users, function(u) {
-					return u == $this.data('guid');
-				});
-				if (opened) return false;
+			$.each($cb, function(i, e) { // check if room with this user is not already open
+				var users = $(e).data('users');
+				if (users.length == 2) {
+					var openedRoomUsers = [calledGUID+''+myGUID, myGUID+''+calledGUID],
+						thisRoom = users[0].guid+''+users[1].guid;
+
+					if ($.inArray(thisRoom, openedRoomUsers) > -1) opened = $(e);
+				}
 			});
 
-			var data = {
-					channel: new Date().getTime() + (Math.random()+"").replace('0.','_'),
-					type: 'chat',
-					data: {
-						chat_name: $this.data('name'),
-						add_users: [elgg.get_logged_in_user_guid(), $this.data('guid')]
-					}
-				};
+			if (opened) {
+				opened.find('textarea').focus().parent().effect('highlight', {}, 1000);
+			} else {
+				var roomID = elgg.getToken(),
+					data = {
+						room: roomID,
+						users: [elgg.nodejs.me(), onlineUsers[calledGUID]]
+					};
 
-			elgg.nodeChat.openChatroom(data);
+				elgg.nodeChat.openChatroom(data);
+				$('#chatroom-'+roomID).find('textarea').focus();
+			}
+		});
+
+		// search user
+		var Fuse, fuseUsers = [];
+		$('#search-online-users')
+		.on('keyup', 'input', function() {
+			var val = $(this).val(),
+				$users = $('#online-users .elgg-item-user');
+
+			if (val.length === 0) {
+				$users.show();
+			} else {
+				require(['fuse'], function(Fuse) {
+					var $ouUl = $('#online-users .elgg-body ul'),
+						fuseUsers = [],
+						fuse = new Fuse(fuseUsers, {
+							keys: ['name']
+						});
+
+					$ouUl.css('height', $ouUl.height());
+
+					$.each(onlineUsers, function(i, user) {
+						fuseUsers.push(user);
+					});
+
+					$.each(fuse.search(val), function(i, elem) {
+						$users = $users.not($('#online-users #elgg-user-'+elem.guid));
+					});
+					$users.fadeOut('fast');
+				});
+			}
+		})
+		.on('blur', 'input', function() {
+			if (!$(this).val()) $('#online-users .elgg-body ul').css('height', 'auto');
 		});
 
 		// Send message
-		$('body').on('keydown', '.chat-box .chat-box-bottom textarea', function(evt) {
+		$('body').on('keyup', '.chat-room .chat-box-bottom textarea', function(evt) {
 			var $this = $(this),
 				msg = $.trim($this.val());
 
 			if (!evt.shiftKey && evt.keyCode == 13) { // user can type shift+enter to write enter char
 				if (msg.replace(/\s/g, '').length !== 0) { // Don't send just whitespace
 					var $cb = $this.closest('.chat-box'),
-						data = $.extend($cb.data(), {msg: msg});
+						date = new Date(),
+						data = $.extend($cb.data(), {
+							msg: {
+								text: msg,
+								date: date.toString()
+							}
+						});
 
-					socket.emit('message', data, function() {
-						elgg.nodeChat.addMessage($cb, $.extend(data, {sender: {
-							guid: elgg.get_logged_in_user_guid(),
-							name: elgg.get_logged_in_user_entity().name
-						}}));
+					socket.emit('chat_message', data, function() {
+						$.extend(data.msg, {sender: elgg.nodejs.me()});
+						elgg.nodeChat.addMessage($cb, data);
 						$this.val('');
 					});
 				}
@@ -80,7 +124,6 @@ elgg.register_hook_handler('init', 'system', elgg.nodeChat.init);
 
 
 elgg.nodeChat.connected = function(hook, type, params, value) {
-	console.log(params, value);
 	if (value && params) {
 		$.each(params, function(i, user) {
 			onlineUsers[user.guid] = user;
@@ -89,31 +132,29 @@ elgg.nodeChat.connected = function(hook, type, params, value) {
 	}
 	return value;
 };
-elgg.register_hook_handler('socketIO', 'connected', elgg.nodeChat.connected);
+elgg.register_hook_handler('nodejs', 'connected', elgg.nodeChat.connected);
 
 
 
 elgg.nodeChat.add_online_user = function(hook, type, params, value) {
-	console.log(params, value);
 	if (value && params) {
 		onlineUsers[params.guid] = params;
 		elgg.nodeChat.set_online_user();
 	}
 	return value;
 };
-elgg.register_hook_handler('socketIO', 'add_online_user', elgg.nodeChat.add_online_user);
+elgg.register_hook_handler('nodejs', 'add_online_user', elgg.nodeChat.add_online_user);
 
 
 
 elgg.nodeChat.remove_online_user = function(hook, type, params, value) {
-	console.log(params, 'remove_online_user'+value);
 	if (value && params) {
 		delete onlineUsers[params];
 		elgg.nodeChat.set_online_user();
 	}
 	return value;
 };
-elgg.register_hook_handler('socketIO', 'remove_online_user', elgg.nodeChat.remove_online_user);
+elgg.register_hook_handler('nodejs', 'remove_online_user', elgg.nodeChat.remove_online_user);
 
 
 
@@ -123,49 +164,79 @@ elgg.nodeChat.set_online_user = function() {
 
 	var $ou = $('#online-users'),
 		userCount = Object.keys(onlineUsers).length,
-		onlineString = elgg.echo('videochat:online_user'+(userCount>1?'s':''), [userCount])
+		onlineString = elgg.echo('videochat:online_user'+(userCount>1?'s':''), [userCount]);
 
 	$ou.removeClass('hidden').find('.elgg-head h4').html(onlineString);
 
-	$ou.find('.elgg-body ul').html(Handlebars.compile($('#online-users-template').html())({users: onlineUsers}));
+	$ou.find('.elgg-body ul').html(elgg.handlebars('online-users-template')({users: onlineUsers}));
 };
 
 
 
 elgg.nodeChat.message = function(hook, type, params, value) {
 	// if chat box doesn't exist
-	if (!$('#chatroom-'+params.channel).length) {
+	if (!$('#chatroom-'+params.room).length) {
 		elgg.nodeChat.openChatroom(params);
 	}
 
-	var $cb = $('#chatroom-'+params.channel);
+	var $cb = $('#chatroom-'+params.room);
 
 	elgg.nodeChat.addMessage($cb, params);
+	elgg.notify();
 
 	return value;
 };
-elgg.register_hook_handler('socketIO', 'message:chat', elgg.nodeChat.message);
+elgg.register_hook_handler('nodejs', 'message:chat', elgg.nodeChat.message);
+
+
+
+elgg.nodeChat.join_room = function(hook, type, params, value) {
+	if (!$('#chatroom-'+params.room).length) {
+		elgg.nodeChat.openChatroom(params);
+
+		var $chatElem = $('#chatroom-'+params.room);
+
+		$.each(params.msgs, function(i, msg) {
+			$.extend(params, {msg: msg});
+			elgg.nodeChat.addMessage($chatElem, params);
+		});
+	}
+
+	return value;
+};
+elgg.register_hook_handler('nodejs', 'join_room', elgg.nodeChat.join_room);
 
 
 
 elgg.nodeChat.openChatroom = function(data) {
-	$('#chat-container').prepend(Handlebars.compile($('#chatroom-template').html())(data));
-	$('#chatroom-'+data.channel).data(data);
+	var room_name = '';
+
+	$.each(data.users, function(i, e) {
+		if (e.guid != elgg.get_logged_in_user_guid()) room_name += (room_name.length == 0) ? e.name : ', '+e.name;
+	});
+	$.extend(data, {room_name: room_name});
+	$('#chat-container').prepend(elgg.handlebars('chatroom-template')(data));
+	$('#chatroom-'+data.room).data(data);
 };
 
 
 
 elgg.nodeChat.addMessage = function(chatElem, data) {
 	var $cb = chatElem.find('.chat-body'),
-		time = new Date();
+		$cbLast = $cb.children('li:last-child'),
+		date = new Date(data.msg.date),
+		addZero = function(num) {
+			return (num < 10) ? '0'+num : num;
+		};
 
-	$.extend(data, {time: time.getHours() + ':' + time.getMinutes() + ':' + time.getSeconds()});
-	if ($cb.children('li:last-child').data('guid') == data.sender.guid) {
-		$cb.children('li:last-child').find('.elgg-body').append($('<p>', {html: data.msg, time: data.time}));
+	data.msg.date = addZero(date.getHours()) + ':' + addZero(date.getMinutes()) + ':' + addZero(date.getSeconds());
+	if ($cbLast.length && $cbLast.data('msg').sender.guid == data.msg.sender.guid) {
+		$cbLast.find('.elgg-body').append($('<p>', {html: data.msg.text, date: data.msg.date}));
 	} else {
-		$cb.append(Handlebars.compile($('#chat-message-template').html())(data));
+		var message = elgg.handlebars('chat-message-template');
+		$cb.append($(message(data)).data(data));
 	}
-	$cb.scrollTo(999999);
+	$cb.scrollTop($cb[0].scrollHeight);
 };
 
 

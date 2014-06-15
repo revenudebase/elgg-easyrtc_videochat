@@ -21,6 +21,9 @@
 .chat-box > .elgg-head h4 {
 	color: white;
 }
+.chat-box .elgg-avatar-tiny img {
+	width: 25px;
+}
 .chat-box > .elgg-head a {
 	color: white;
 	padding: 1px 3px 2px;
@@ -75,20 +78,26 @@
 	min-height: 100px;
 	max-height: 300px;
 	overflow-y: auto;
+	padding-bottom: 15px;
 }
 .chat-body p {
 	margin-bottom: 4px;
 	white-space: pre-line;
 	line-height: 1.1em;
+	position: relative;
 }
 .chat-body p:before {
 	content: attr(time);
-	color: #666;
+	color: white;
 	font-size: 75%;
 	line-height: inherit;
 	font-style: italic;
-	float: right;
+	position: absolute;
 	opacity: 0;
+	background: rgba(0, 0, 0, 0.5);
+	top: -18px;
+	padding: 2px 4px;
+	right: 0px;
 }
 .chat-body p:hover:before {
 	opacity: 1;
@@ -100,7 +109,7 @@
 .chat-box-bottom textarea {
 	border: none;
 	padding: 2px 5px 1px;
-	background: white;
+	background: transparent;
 	box-shadow: none;
 	resize: none;
 }

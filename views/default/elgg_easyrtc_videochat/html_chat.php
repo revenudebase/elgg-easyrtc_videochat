@@ -41,7 +41,7 @@ $site_url = elgg_get_site_url();
 		<div class="elgg-image-block clearfix">
 			<div class="elgg-image">
 				<div class="elgg-avatar elgg-avatar-tiny">
-					<img src="http://127.0.0.1/mfrb/elgg/_graphics/icons/user/defaulttiny.gif" alt="{{this.name}}" title="{{this.name}}">
+					<img src="{{this.avatar.tiny}}" title="{{this.name}}">
 				</div>
 			</div>
 			<div class="elgg-body">
@@ -54,9 +54,9 @@ $site_url = elgg_get_site_url();
 </script>
 
 <script id="chatroom-template" type="text/template">
-<li id="chatroom-{{channel}}" class="chat-box chat-room mrm elgg-state-active">
+<li id="chatroom-{{room}}" class="chat-box chat-room mrm elgg-state-active">
 		<div class="elgg-head link">
-			<h4 class="float">{{data.chat_name}}</h4>
+			<h4 class="float">{{room_name}}</h4>
 			<ul class="elgg-menu elgg-menu-hz float-alt hidden">
 				<li class="elgg-menu-item-chat-settings">
 					<a href="#" rel="toggle" class="fi-widget"></a>
@@ -74,7 +74,7 @@ $site_url = elgg_get_site_url();
 				<input placeholder="<?php echo elgg_echo('videochat:add_user'); ?>">
 				<span class="fi-magnifying-glass"></span>
 			</div>
-			<ul class="chat-body">
+			<ul class="chat-body scrollable">
 			</ul>
 			<div class="chat-box-bottom">
 				<textarea placeholder="<?php echo elgg_echo('videochat:add_message'); ?>"></textarea>
@@ -84,16 +84,16 @@ $site_url = elgg_get_site_url();
 </script>
 
 <script id="chat-message-template" type="text/template">
-	<li id="elgg-user-{{sender.guid}}" class="elgg-item elgg-item-user pas" data-guid="{{sender.guid}}" data-name="{{sender.name}}">
+	<li id="elgg-user-{{msg.sender.guid}}" class="elgg-item elgg-item-user pas">
 		<div class="elgg-image-block clearfix pan">
 			<div class="elgg-image">
 				<div class="elgg-avatar elgg-avatar-tiny">
-					<img src="http://127.0.0.1/mfrb/elgg/_graphics/icons/user/defaulttiny.gif" alt="{{sender.name}}" title="{{sender.name}}">
+					<img src="{{msg.sender.avatar.tiny}}" title="{{msg.sender.name}}">
 				</div>
 			</div>
 			<div class="elgg-body">
-				<h4>{{sender.name}}</h4>
-				<p time="{{time}}">{{msg}}</p>
+				<h4>{{msg.sender.name}}</h4>
+				<p time="{{msg.date}}">{{msg.text}}</p>
 			</div>
 		</div>
 	</li>

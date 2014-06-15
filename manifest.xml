@@ -17,7 +17,7 @@
 	<requires>
 		<type>priority</type>
 		<priority>after</priority>
-		<plugin>elgg-easyrtc</plugin>
+		<plugin>elgg-nodejs</plugin>
 	</requires>
 	<activate_on_install>true</activate_on_install>
 </plugin_manifest>
