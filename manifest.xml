@@ -7,7 +7,7 @@
 	<category>integrations</category>
 	<category>ggouv</category>
 	<blurb>easyRTC video chat</blurb>
-	<description>easyRTC video chat</description>
+	<description>A video chat for Elgg using easyRTC and node.js</description>
 	<website>https://github.com/ggouv/elgg-easyrtc_videochat</website>
 	<license>GNU General Public License version 2</license>
 	<requires>
