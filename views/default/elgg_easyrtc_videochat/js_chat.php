@@ -5,7 +5,7 @@ elgg.provide('elgg.nodeChat');
 
 elgg.nodeChat.init = function() {
 
-	require(['socket.io-client', 'handlebars'], function() {
+	require(['socket.io-client'], function() {
 
 		// toggle chat box
 		$('body').on('click', '.chat-box > .elgg-head, .chat-box > .elgg-head .elgg-menu-item-toggle a', function() {
